@@ -1,0 +1,15 @@
+[project]
+name = "crypto-selfhosted"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiogram>=3.24.0",
+    "emoji>=2.15.0",
+    "loguru>=0.7.3",
+    "mnemonic>=0.21",
+    "motor>=3.7.1",
+    "password-generator>=0.1.0",
+    "tronpy>=0.6.2",
+]
