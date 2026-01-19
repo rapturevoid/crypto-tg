@@ -12,7 +12,7 @@ class MongoManager:
         """Connect to MongoDB and return the database object."""
         try:
             mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-            db_name = os.getenv("MONGO_DB_NAME", "kingdom_shop")
+            db_name = os.getenv("MONGO_DB_NAME", "crypto_tg")
 
             self.client = AsyncIOMotorClient(mongo_url)
             self.db = self.client[db_name]
