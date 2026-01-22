@@ -15,6 +15,7 @@ import string
 router = Router()
 
 transfer_states = {}
+add_wallet_states = {}
 
 
 @router.callback_query(lambda c: c.data == "tron_wallets")
@@ -46,14 +47,19 @@ async def tron_wallets_handler(callback: CallbackQuery) -> None:
         text = parser.get("select_wallet")
         wallet_buttons = []
         for wallet in user_wallets:
+            name = wallet.get("name", "")
             address = wallet.get("address", "Unknown")
             wallet_id = str(wallet.get("_id"))
-            short_address = (
-                address[:6] + "..." + address[-4:] if len(address) > 10 else address
+            display_name = (
+                name
+                if name
+                else (
+                    address[:6] + "..." + address[-4:] if len(address) > 10 else address
+                )
             )
             wallet_buttons.append(
                 InlineKeyboardButton(
-                    text=short_address, callback_data=f"wallet_info:{wallet_id}"
+                    text=display_name, callback_data=f"wallet_info:{wallet_id}"
                 )
             )
 
@@ -86,6 +92,58 @@ async def tron_wallets_handler(callback: CallbackQuery) -> None:
 @router.message(F.text & ~F.text.startswith("/"))
 async def handle_transfer_input(message: Message) -> None:
     user_id = message.from_user.id
+
+    if user_id in add_wallet_states:
+        wallet_name = message.text.strip()
+        if not wallet_name:
+            await message.answer(
+                text="Название кошелька не может быть пустым. Введите название:",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="Отмена", callback_data="cancel_add_wallet"
+                            )
+                        ]
+                    ]
+                ),
+            )
+            return
+
+        # Create wallet
+        new_wallet = tron_implement.create_wallet()
+
+        if new_wallet:
+            db = await mongo_manager.get_database()
+            usdt_wallets = db["usdt_wallets"]
+
+            wallet_doc = {
+                "user_id": user_id,
+                "address": new_wallet["address"],
+                "private_key": new_wallet["private_key"],
+                "mnemonic": new_wallet["mnemonic"],
+                "passwd": new_wallet["passwd"],
+                "network": "tron",
+                "name": wallet_name,
+            }
+
+            await usdt_wallets.insert_one(wallet_doc)
+
+            await message.answer(
+                text=parser.get("wallet_created")
+                + f"\nНазвание: {wallet_name}\n"
+                + f"Адрес: {new_wallet['address']}\n\n"
+                + parser.get("security_warning")
+                + "\n\n"
+                + f"Seed-фраза: <code>{new_wallet['mnemonic']}</code>\n"
+                + f"Приватный ключ: <code>{new_wallet['private_key']}</code>",
+                parse_mode="HTML",
+            )
+        else:
+            await message.answer(text=parser.get("wallet_creation_error"))
+
+        del add_wallet_states[user_id]
+        return
 
     if user_id not in transfer_states:
         return
@@ -300,35 +358,25 @@ async def private_info_handler(callback: CallbackQuery) -> None:
 
 @router.callback_query(lambda c: c.data == "add_tron_wallet")
 async def add_tron_wallet_handler(callback: CallbackQuery) -> None:
-    new_wallet = tron_implement.create_wallet()
+    add_wallet_states[callback.from_user.id] = True
 
-    if new_wallet:
-        db = await mongo_manager.get_database()
-        usdt_wallets = db["usdt_wallets"]
+    await callback.message.answer(
+        text="Введите название для нового Tron кошелька:",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Отмена", callback_data="cancel_add_wallet")]
+            ]
+        ),
+    )
+    await callback.answer()
 
-        wallet_doc = {
-            "user_id": callback.from_user.id,
-            "address": new_wallet["address"],
-            "private_key": new_wallet["private_key"],
-            "mnemonic": new_wallet["mnemonic"],
-            "passwd": new_wallet["passwd"],
-            "network": "tron",
-        }
 
-        await usdt_wallets.insert_one(wallet_doc)
+@router.callback_query(lambda c: c.data == "cancel_add_wallet")
+async def cancel_add_wallet_handler(callback: CallbackQuery) -> None:
+    if callback.from_user.id in add_wallet_states:
+        del add_wallet_states[callback.from_user.id]
 
-        await callback.message.answer(
-            text=parser.get("wallet_created")
-            + f"\nАдрес: {new_wallet['address']}\n\n"
-            + parser.get("security_warning")
-            + "\n\n"
-            + f"Seed-фраза: <code>{new_wallet['mnemonic']}</code>\n"
-            + f"Приватный ключ: <code>{new_wallet['private_key']}</code>",
-            parse_mode="HTML",
-        )
-    else:
-        await callback.message.answer(text=parser.get("wallet_creation_error"))
-
+    await callback.message.answer(text="Создание кошелька отменено.")
     await callback.answer()
 
 

@@ -23,7 +23,7 @@ class TronImplement:
             else "https://nile.tronscan.org"
         )
 
-    def create_wallet(self, strength: int = 256):
+    def create_wallet(self, name: str, strength: int = 256):
         try:
             mnemo = Mnemonic("english")
             mnemonic_phrase = mnemo.generate(strength=strength)
@@ -37,6 +37,7 @@ class TronImplement:
                 "private_key": wallet["private_key"],
                 "mnemonic": mnemonic_phrase,
                 "passwd": passwd,
+                "name": name,
             }
         except Exception:
             logger.exception("Generate wallet error!")
