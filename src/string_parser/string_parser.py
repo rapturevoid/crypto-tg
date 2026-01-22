@@ -17,3 +17,4 @@ class StringsParser:
 
 
 parser = StringsParser("locales/ru.json")
+inline = StringsParser("locales/buttons.json")

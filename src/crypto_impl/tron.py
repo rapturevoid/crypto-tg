@@ -1,45 +1,39 @@
-from password_generator import PasswordGenerator
+from password_generator import generate
 from tronpy import Tron
 from tronpy.keys import PrivateKey
 from tronpy.exceptions import AddressNotFound
 from mnemonic import Mnemonic
 from loguru import logger
+import os
 
 
 class TronImplement:
 
     def __init__(self, network: str):
+        logger.info(f"Initializing TronImplementation with network: {network}")
         self.tron = Tron(network=network)
         self.contract = (
             "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
             if network == "mainnet"
             else "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf"
         )
+        self.scan_url = (
+            "https://tronscan.org"
+            if network == "mainnet"
+            else "https://nile.tronscan.org"
+        )
 
-    def convert_to_tron_amount(amount):
-        return int(round(amount * 1_000_000))
-
-    def create_wallet(self, strength=128):
+    def create_wallet(self, strength: int = 256):
         try:
             mnemo = Mnemonic("english")
             mnemonic_phrase = mnemo.generate(strength=strength)
-            passgen = PasswordGenerator()
-            passgen.minschars = 0
-            passwd = passgen.generate()
+            passwd = generate()
 
             wallet = self.tron.generate_address_from_mnemonic(
                 mnemonic_phrase, passphrase=passwd
             )
-            logger.debug(
-                "Generated new wallet: \n{adress}\n{private_key}\n{mnemonic}\n{passwd}",
-                adress=wallet["base58check_address"],
-                private_key=wallet["private_key"],  # [:4]
-                mnemonic=mnemonic_phrase,  # [:13]
-                passwd=passwd,
-            )  # [:4]
-
             return {
-                "adress": wallet["base58check_address"],
+                "address": wallet["base58check_address"],
                 "private_key": wallet["private_key"],
                 "mnemonic": mnemonic_phrase,
                 "passwd": passwd,
@@ -72,27 +66,50 @@ class TronImplement:
             return {"trx": "0", "usdt": "0"}
         except Exception:
             logger.exception("Balance getting error!")
+            return {"trx": "0", "usdt": "0"}
 
-    def transfer(self, wallet: str, private_key: str, to: str, amount):
-        contract = self.tron.get_contract(self.contract)
+    def transfer(
+        self, wallet: str, private_key: str, to: str, amount, currency: str = "USDT"
+    ):
         try:
-            smart_contract = (
-                (
-                    contract.functions.transfer(to, int(round(amount * 1_000_000)))
+            if currency == "USDT":
+                contract = self.tron.get_contract(self.contract)
+                amount_in_smallest = int(round(amount * 1_000_000))
+
+                txn = (
+                    contract.functions.transfer(to, amount_in_smallest)
                     .with_owner(wallet)
-                    .fee_limit(5_000_00)
+                    .fee_limit(5_000_000)
                     .build()
                     .sign(PrivateKey(bytes.fromhex(private_key)))
                 )
-                .broadcast()
-                .wait()
-            )
+            elif currency == "TRX":
+                amount_in_sun = int(round(amount * 1_000_000))
+
+                txn = (
+                    self.tron.trx.transfer(wallet, to, amount_in_sun)
+                    .build()
+                    .sign(PrivateKey(bytes.fromhex(private_key)))
+                )
+            else:
+                raise ValueError(f"Unsupported currency: {currency}")
+
+            result = txn.broadcast().wait()
+
+            tx_hash = result["id"] if isinstance(result, dict) else str(result.txID)
+
             logger.debug(
-                "Broadcasting smart contract: {contract}\n", contract=smart_contract
+                "Transfer completed: {hash}, amount: {amount} {currency}",
+                hash=tx_hash,
+                amount=amount,
+                currency=currency,
             )
+
+            return tx_hash, self.scan_url
 
         except Exception as e:
             logger.exception("Failed transfer!")
+            raise
 
 
-tron_implement = TronImplement("nile")
+tron_implement = TronImplement(os.getenv("TRON_NETWORK", "nile"))

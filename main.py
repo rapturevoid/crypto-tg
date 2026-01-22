@@ -5,6 +5,13 @@ import os
 import logging
 from loguru import logger
 
+from src.bot.handlers import (
+    start_handler,
+    wallets_handler,
+    tron_wallets_handler,
+    bitcoin_wallets_handler,
+)
+
 
 class InterceptHandler(logging.Handler):
     def emit(self, record):
@@ -35,7 +42,14 @@ async def main():
     db = await mongo_manager.connect()
 
     try:
+        dp.include_router(start_handler.router)
+        dp.include_router(wallets_handler.router)
+        dp.include_router(tron_wallets_handler.router)
+        dp.include_router(bitcoin_wallets_handler.router)
+
         await dp.start_polling(bot)
+    except Exception as e:
+        logger.error(f"Error during bot operation: {e}")
     finally:
         await mongo_manager.disconnect()
 

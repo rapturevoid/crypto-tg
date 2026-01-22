@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aiogram>=3.24.0",
+    "bitcoinlib>=0.7.6",
     "emoji>=2.15.0",
     "loguru>=0.7.3",
     "mnemonic>=0.21",

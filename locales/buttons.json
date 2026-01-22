@@ -1,0 +1,11 @@
+{
+    "wallets": ":money_bag: Кошельки",
+    "tron_wallets": "Tron",
+    "bitcoin_wallets": "Bitcoin",
+    "add_wallet": ":loudspeaker: Добавить кошелек",
+    "transfer": ":octopus: Перевести",
+    "top_up": ":octopus: Пополнить",
+    "private_info": ":key: Приватная информация",
+    "back_to_wallets": ":left_arrow: Назад к кошелькам",
+    "back_to_networks": ":left_arrow: Назад к сетям"
+}
