@@ -111,7 +111,7 @@ async def handle_transfer_input(message: Message) -> None:
             return
 
         # Create wallet
-        new_wallet = tron_implement.create_wallet()
+        new_wallet = tron_implement.create_wallet(name=str(wallet_name))
 
         if new_wallet:
             db = await mongo_manager.get_database()

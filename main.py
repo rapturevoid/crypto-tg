@@ -9,7 +9,6 @@ from src.bot.handlers import (
     start_handler,
     wallets_handler,
     tron_wallets_handler,
-    bitcoin_wallets_handler,
 )
 
 
@@ -45,7 +44,7 @@ async def main():
         dp.include_router(start_handler.router)
         dp.include_router(wallets_handler.router)
         dp.include_router(tron_wallets_handler.router)
-        dp.include_router(bitcoin_wallets_handler.router)
+        #dp.include_router(bitcoin_wallets_handler.router)
 
         await dp.start_polling(bot)
     except Exception as e:
